@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- 设置字符编码 -->
+    <meta charset="UTF-8">
+    <!-- 禁止页面缩放，适配手机屏幕 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <title>西兰花吃草莓</title>
+    <style>
+        /* ===== 页面基础样式 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 禁止页面滚动和选择文字 */
+        body {
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            background-color: #90EE90; /* 浅绿色草地背景 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        /* 游戏标题样式 */
+        #gameTitle {
+            color: #2E7D32;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 0px #81C784;
+        }
+
+        /* 得分显示样式 */
+        #scoreBoard {
+            color: #1B5E20;
+            font-size: 18px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        /* Canvas 画布样式 */
+        #gameCanvas {
+            border: 3px solid #2E7D32;
+            background-color: #A5D6A7; /* 稍深一点的草地色 */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            display: block;
+            max-width: 95vw;
+            max-height: 60vh;
+        }
+
+        /* ===== 方向控制按钮容器 ===== */
+        #controls {
+            display: grid;
+            grid-template-columns: 80px 80px 80px;
+            grid-template-rows: 80px 80px;
+            gap: 5px;
+            margin-top: 15px;
+        }
+
+        /* 方向按钮通用样式 */
+        .ctrl-btn {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(46, 125, 50, 0.4); /* 半透明绿色 */
+            border: 2px solid rgba(46, 125, 50, 0.6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.1s;
+        }
+
+        /* 按钮按下效果 */
+        .ctrl-btn:active {
+            background-color: rgba(46, 125, 50, 0.7);
+        }
+
+        /* 上按钮位置 */
+        #btnUp {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        /* 左按钮位置 */
+        #btnLeft {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        /* 右按钮位置 */
+        #btnRight {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        /* 下按钮位置 */
+        #btnDown {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        /* ===== 游戏结束弹窗 ===== */
+        #gameOverModal {
+            display: none; /* 默认隐藏 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        /* 弹窗内容框 */
+        #modalContent {
+            background-color: #C8E6C9;
+            padding: 30px;
+            border-radius: 20px;
+            border: 4px solid #2E7D32;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+        }
+
+        /* Game Over 标题 */
+        #modalContent h2 {
+            color: #D32F2F;
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        /* 最终得分文字 */
+        #finalScore {
+            color: #1B5E20;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* 重新开始按钮 */
+        #restartBtn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #2E7D32;
+        }
+
+        /* 重新开始按钮按下效果 */
+        #restartBtn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #2E7D32;
+        }
+    </style>
+</head>
+<body>
+    <!-- 游戏标题 -->
+    <div id="gameTitle">🥦 西兰花吃草莓 🍓</div>
+    
+    <!-- 得分显示 -->
+    <div id="scoreBoard">得分: 0</div>
+    
+    <!-- 游戏画布 -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- 方向控制按钮 -->
+    <div id="controls">
+        <div class="ctrl-btn" id="btnUp">▲</div>
+        <div class="ctrl-btn" id="btnLeft">◀</div>
+        <div class="ctrl-btn" id="btnDown">▼</div>
+        <div class="ctrl-btn" id="btnRight">▶</div>
+    </div>
+
+    <!-- 游戏结束弹窗 -->
+    <div id="gameOverModal">
+        <div id="modalContent">
+            <h2>Game Over!</h2>
+            <div id="finalScore"></div>
+            <button id="restartBtn">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        // ===== 游戏核心代码 =====
+
+        // 获取页面元素
+        const canvas = document.getElementById('gameCanvas'); // 画布
+        const ctx = canvas.getContext('2d'); // 2D 绘图上下文
+        const scoreBoard = document.getElementById('scoreBoard'); // 得分板
+        const gameOverModal = document.getElementById('gameOverModal'); // 游戏结束弹窗
+        const finalScoreDiv = document.getElementById('finalScore'); // 最终得分显示
+        const restartBtn = document.getElementById('restartBtn'); // 重新开始按钮
+
+        // ===== 游戏配置参数 =====
+        const GRID_SIZE = 20; // 网格大小（每个格子像素块边长）
+        const COLS = 15; // 横向格子数
+        const ROWS = 15; // 纵向格子数
+        const GAME_SPEED = 200; // 游戏速度（毫秒/步）
+
+        // 计算画布尺寸（适配手机屏幕）
+        const maxCanvasWidth = Math.min(window.innerWidth * 0.95, 400);
+        const PIXEL_SIZE = Math.floor(maxCanvasWidth / COLS); // 每个像素块的实际像素大小
+        canvas.width = PIXEL_SIZE * COLS;
+        canvas.height = PIXEL_SIZE * ROWS;
+
+        // ===== 游戏状态变量 =====
+        let snake = []; // 西兰花（蛇）的身体数组，每个元素是 {x, y}
+        let direction = { x: 0, y: 0 }; // 当前移动方向
+        let nextDirection = { x: 0, y: 0 }; // 下一步要移动的方向（防止快速连续按键导致反向死亡）
+        let strawberry = { x: 0, y: 0 }; // 草莓位置
+        let score = 0; // 当前得分
+        let gameRunning = false; // 游戏是否进行中
+        let gameLoop = null; // 游戏循环定时器
+
+        // ===== 像素图案定义（1=有颜色，0=透明）=====
+
+        // 西兰花冠部图案（深绿色）- 7x5
+        const broccoliCrownPattern = [
+            [0,1,1,1,1,1,0],
+            [1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1],
+            [0,1,1,1,1,1,0],
+            [0,0,1,0,1,0,0]
+        ];
+
+        // 西兰花茎部图案（浅绿色）- 3x3
+        const broccoliStemPattern = [
+            [0,1,0],
+            [0,1,0],
+            [1,1,1]
+        ];
+
+        // 草莓图案（红色主体）- 5x5
+        const strawberryBodyPattern = [
+            [0,0,1,0,0],
+            [0,1,1,1,0],
+            [1,1,1,1,1],
+            [1,1,1,1,1],
+            [0,1,1,1,0]
+        ];
+
+        // 草莓叶子图案（绿色）- 5x2
+        const strawberryLeafPattern = [
+            [0,1,0,1,0],
+            [1,1,1,1,1]
+        ];
+
+        // ===== 初始化游戏 =====
+        function initGame() {
+            // 初始化西兰花位置（从中间开始，长度3）
+            const startX = Math.floor(COLS / 2);
+            const startY = Math.floor(ROWS / 2);
+            snake = [
+                { x: startX, y: startY },
+                { x: startX - 1, y: startY },
+                { x: startX - 2, y: startY }
+            ];
+            
+            // 初始方向向右
+            direction = { x: 1, y: 0 };
+            nextDirection = { x: 1, y: 0 };
+            
+            // 重置得分
+            score = 0;
+            updateScore();
+            
+            // 生成第一颗草莓
+            generateStrawberry();
+            
+            // 隐藏游戏结束弹窗
+            gameOverModal.style.display = 'none';
+            
+            // 标记游戏运行中
+            gameRunning = true;
+            
+            // 清除旧的游戏循环，启动新的
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(gameStep, GAME_SPEED);
+            
+            // 立即绘制一次
+            draw();
+        }
+
+        // ===== 生成草莓（确保证不生成在西兰花身上）=====
+        function generateStrawberry() {
+            let validPosition = false;
+            while (!validPosition) {
+                // 随机生成位置
+                const x = Math.floor(Math.random() * COLS);
+                const y = Math.floor(Math.random() * ROWS);
+                
+                // 检查是否与西兰花身体重叠
+                let overlap = false;
+                for (let segment of snake) {
+                    if (segment.x === x && segment.y === y) {
+                        overlap = true;
+                        break;
+                    }
+                }
+                
+                // 如果没有重叠，使用这个位置
+                if (!overlap) {
+                    strawberry = { x, y };
+                    validPosition = true;
+                }
+            }
+        }
+
+        // ===== 更新得分显示 =====
+        function updateScore() {
+            scoreBoard.textContent = `得分: ${score}`;
+        }
+
+        // ===== 游戏主循环（每步执行）=====
+        function gameStep() {
+            if (!gameRunning) return;
+
+            // 应用下一步方向
+            direction = { ...nextDirection };
+
+            // 计算新头部位置
+            const head = snake[0];
+            const newHead = {
+                x: head.x + direction.x,
+                y: head.y + direction.y
+            };
+
+            // ===== 碰撞检测：撞墙 =====
+            if (newHead.x < 0 || newHead.x >= COLS || newHead.y < 0 || newHead.y >= ROWS) {
+                gameOver();
+                return;
+            }
+
+            // ===== 碰撞检测：撞到自己 =====
+            for (let segment of snake) {
+                if (newHead.x === segment.x && newHead.y === segment.y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // 将新头部加入蛇身
+            snake.unshift(newHead);
+
+            // ===== 检查是否吃到草莓 =====
+            if (newHead.x === strawberry.x && newHead.y === strawberry.y) {
+                // 吃到草莓，得分+1
+                score++;
+                updateScore();
+                // 生成新草莓（蛇身已经变长，不需要pop尾部）
+                generateStrawberry();
+            } else {
+                // 没吃到草莓，移除尾部（保持长度不变）
+                snake.pop();
+            }
+
+            // 绘制画面
+            draw();
+        }
+
+        // ===== 游戏结束处理 =====
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            
+            // 显示游戏结束弹窗
+            finalScoreDiv.textContent = `西兰花吃了 ${score} 颗草莓 🍓`;
+            gameOverModal.style.display = 'flex';
+        }
+
+        // ===== 绘制像素图案辅助函数 =====
+        function drawPixelPattern(pattern, offsetX, offsetY, color, pixelSize) {
+            ctx.fillStyle = color;
+            for (let row = 0; row < pattern.length; row++) {
+                for (let col = 0; col < pattern[row].length; col++) {
+                    if (pattern[row][col] === 1) {
+                        ctx.fillRect(
+                            offsetX + col * pixelSize,
+                            offsetY + row * pixelSize,
+                            pixelSize,
+                            pixelSize
+                        );
+                    }
+                }
+            }
+        }
+
+        // ===== 主绘制函数 =====
+        function draw() {
+            // 清空画布（填充草地色）
+            ctx.fillStyle = '#A5D6A7';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // ===== 绘制网格线（可选，增加像素感）=====
+            ctx.strokeStyle = 'rgba(76, 175, 80, 0.15)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= COLS; x++) {
+                ctx.beginPath();
+                ctx.moveTo(x * PIXEL_SIZE, 0);
+                ctx.lineTo(x * PIXEL_SIZE, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= ROWS; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, y * PIXEL_SIZE);
+                ctx.lineTo(canvas.width, y * PIXEL_SIZE);
+                ctx.stroke();
+            }
+
+            // ===== 绘制草莓 =====
+            const strawPixel = Math.floor(PIXEL_SIZE / 5); // 草莓内部小像素大小
+            const strawOffsetX = strawberry.x * PIXEL_SIZE + (PIXEL_SIZE - 5 * strawPixel) / 2;
+            const strawOffsetY = strawberry.y * PIXEL_SIZE + (PIXEL_SIZE - 7 * strawPixel) / 2;
+            
+            // 先画叶子（在下方）
+            drawPixelPattern(strawberryLeafPattern, strawOffsetX, strawOffsetY, '#2E7D32', strawPixel);
+            // 再画红色果实
+            drawPixelPattern(strawberryBodyPattern, strawOffsetX, strawOffsetY + 2 * strawPixel, '#E53935', strawPixel);
+
+            // ===== 绘制西兰花（蛇身）=====
+            for (let i = 0; i < snake.length; i++) {
+                const segment = snake[i];
+                const segX = segment.x * PIXEL_SIZE;
+                const segY = segment.y * PIXEL_SIZE;
+                
+                // 蛇头用完整西兰花图案
+                if (i === 0) {
+                    const headPixel = Math.floor(PIXEL_SIZE / 8); // 头部内部像素大小
+                    const offsetX = segX + (PIXEL_SIZE - 7 * headPixel) / 2;
+                    const offsetY = segY + (PIXEL_SIZE - 8 * headPixel) / 2;
+                    
+                    // 画茎（浅绿色）
+                    drawPixelPattern(broccoliStemPattern, offsetX + 2 * headPixel, offsetY + 5 * headPixel, '#8BC34A', headPixel);
+                    // 画冠（深绿色）
+                    drawPixelPattern(broccoliCrownPattern, offsetX, offsetY + headPixel, '#2E7D32', headPixel);
+                    
+                    // 画眼睛（白色底+黑色眼珠）
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(offsetX + 2 * headPixel, offsetY + 3 * headPixel, headPixel, headPixel);
+                    ctx.fillRect(offsetX + 4 * headPixel, offsetY + 3 * headPixel, headPixel, headPixel);
+                    ctx.fillStyle = 'black';
+                    // 根据方向调整眼珠位置
+                    const eyeOffsetX = direction.x === 1 ? 0 : (direction.x === -1 ? -Math.floor(headPixel/2) : 0);
+                    const eyeOffsetY = direction.y === 1 ? 0 : (direction.y === -1 ? -Math.floor(headPixel/2) : 0);
+                    ctx.fillRect(offsetX + 2 * headPixel + eyeOffsetX + 1, offsetY + 3 * headPixel + eyeOffsetY + 1, Math.ceil(headPixel/2), Math.ceil(headPixel/2));
+                    ctx.fillRect(offsetX + 4 * headPixel + eyeOffsetX + 1, offsetY + 3 * headPixel + eyeOffsetY + 1, Math.ceil(headPixel/2), Math.ceil(headPixel/2));
+                } else {
+                    // 蛇身用简单的绿色方块，越往后越浅
+                    const greenIntensity = Math.max(100, 180 - i * 5);
+                    ctx.fillStyle = `rgb(${Math.floor(greenIntensity/3)}, ${greenIntensity}, ${Math.floor(greenIntensity/3)})`;
+                    ctx.fillRect(segX + 2, segY + 2, PIXEL_SIZE - 4, PIXEL_SIZE - 4);
+                    
+                    // 身体纹理（小点装饰）
+                    ctx.fillStyle = '#1B5E20';
+                    ctx.fillRect(segX + PIXEL_SIZE/3, segY + PIXEL_SIZE/3, 2, 2);
+                }
+            }
+        }
+
+        // ===== 方向控制函数 =====
+        function setDirection(dx, dy) {
+            if (!gameRunning) return;
+            
+            // 防止180度反向移动（不能直接反向）
+            if (direction.x === -dx && direction.y === -dy) return;
+            
+            nextDirection = { x: dx, y: dy };
+        }
+
+        // ===== 绑定方向按钮点击事件 =====
+        document.getElementById('btnUp').addEventListener('click', () => setDirection(0, -1));
+        document.getElementById('btnDown').addEventListener('click', () => setDirection(0, 1));
+        document.getElementById('btnLeft').addEventListener('click', () => setDirection(-1, 0));
+        document.getElementById('btnRight').addEventListener('click', () => setDirection(1, 0));
+
+        // ===== 键盘控制（方便电脑测试）=====
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W':
+                    e.preventDefault();
+                    setDirection(0, -1);
+                    break;
+                case 'ArrowDown': case 's': case 'S':
+                    e.preventDefault();
+                    setDirection(0, 1);
+                    break;
+                case 'ArrowLeft': case 'a': case 'A':
+                    e.preventDefault();
+                    setDirection(-1, 0);
+                    break;
+                case 'ArrowRight': case 'd': case 'D':
+                    e.preventDefault();
+                    setDirection(1, 0);
+                    break;
+            }
+        });
+
+        // ===== 触摸滑动控制（额外功能）=====
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            if (!gameRunning) return;
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            
+            // 判断滑动方向（需要滑动超过一定距离）
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
+                setDirection(dx > 0 ? 1 : -1, 0);
+            } else if (Math.abs(dy) > 20) {
+                setDirection(0, dy > 0 ? 1 : -1);
+            }
+        }, { passive: false });
+
+        // ===== 重新开始按钮 =====
+        restartBtn.addEventListener('click', () => {
+            initGame();
+        });
+
+        // ===== 页面加载完成后启动游戏 =====
+        window.addEventListener('load', () => {
+            initGame();
+        });
+
+        // ===== 窗口大小改变时重新调整 =====
+        window.addEventListener('resize', () => {
+            const newMaxWidth = Math.min(window.innerWidth * 0.95, 400);
+            const newPixelSize = Math.floor(newMaxWidth / COLS);
+            canvas.width = newPixelSize * COLS;
+            canvas.height = newPixelSize * ROWS;
+            // 重绘当前画面
+            draw();
+        });
+    </script>
+</body>
+</html>
